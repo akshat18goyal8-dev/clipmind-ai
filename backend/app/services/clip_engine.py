@@ -67,13 +67,14 @@ class ClipEngineService:
                 end_time
             )
             
-        # 4. Render smart 9:16 vertical video
+        # 4. Render smart 9:16 vertical video with dynamic hook overlay
         FFmpegUtils.render_smart_vertical_video(
             str(raw_clip_path),
             str(vertical_clip_path),
             face_x_center_ratio=face_center_ratio,
             target_aspect=preferred_aspect,
-            background_blur=enable_blur
+            background_blur=enable_blur,
+            overlay_text=title
         )
         
         # 5. Generate subtitle file

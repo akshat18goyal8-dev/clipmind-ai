@@ -126,34 +126,50 @@ class FFmpegUtils:
         output_path: str,
         face_x_center_ratio: float = 0.5,
         target_aspect: str = "9:16",
-        background_blur: bool = True
+        background_blur: bool = True,
+        overlay_text: Optional[str] = None
     ) -> bool:
         """
-        Smart 9:16 vertical crop with face/subject centered and optional blurred ambient background.
+        Smart 9:16 vertical crop with face/subject centered, optional blurred ambient background,
+        and burned-in high-contrast dynamic text captions.
         """
+        # Determine suitable font file on Windows / Linux
+        font_arg = ""
+        win_font = Path("C:/Windows/Fonts/arial.ttf")
+        if win_font.exists():
+            font_arg = "fontfile='C\\:/Windows/Fonts/arial.ttf':"
+
+        # Sanitize overlay text for FFmpeg filter
+        text_filter = ""
+        if overlay_text:
+            clean_text = overlay_text.replace("'", "").replace(":", " - ").replace('"', '').strip()
+            if clean_text:
+                # Wrap to max 40 chars
+                if len(clean_text) > 42:
+                    clean_text = clean_text[:40] + "..."
+                text_filter = f",drawtext={font_arg}text='{clean_text}':fontcolor=yellow:fontsize=40:box=1:boxcolor=black@0.7:boxborderw=12:x=(w-text_w)/2:y=h-320"
+
         if target_aspect == "16:9":
-            # Just copy or re-encode
-            cmd = ["ffmpeg", "-y", "-i", input_clip_path, "-c:v", "libx264", "-c:a", "copy", output_path]
+            vf = f"scale=1920:1080{text_filter}" if text_filter else "scale=1920:1080"
+            cmd = ["ffmpeg", "-y", "-i", input_clip_path, "-vf", vf, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", output_path]
             return subprocess.run(cmd, capture_output=True).returncode == 0
             
         if target_aspect == "1:1":
-            # Square crop
-            vf = "crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080"
+            vf = f"crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080{text_filter}"
             cmd = [
                 "ffmpeg", "-y", "-i", input_clip_path,
                 "-vf", vf,
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "22",
                 "-c:a", "aac", "-b:a", "128k", output_path
             ]
             return subprocess.run(cmd, capture_output=True).returncode == 0
 
         # Target is 9:16 (1080x1920)
         if background_blur:
-            # Dual-layer: blurred scaled background + centered foreground
             filter_complex = (
                 "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg];"
                 "[0:v]scale=1080:-2[fg];"
-                "[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]"
+                f"[bg][fg]overlay=(W-w)/2:(H-h)/2{text_filter}[outv]"
             )
             cmd = [
                 "ffmpeg", "-y",
@@ -170,8 +186,7 @@ class FFmpegUtils:
                 output_path
             ]
         else:
-            # Direct crop around subject center
-            filter_complex = f"crop=ih*9/16:ih:'min(max(0, iw*{face_x_center_ratio} - (ih*9/32)), iw - (ih*9/16))':0,scale=1080:1920"
+            filter_complex = f"crop=ih*9/16:ih:'min(max(0, iw*{face_x_center_ratio} - (ih*9/32)), iw - (ih*9/16))':0,scale=1080:1920{text_filter}"
             cmd = [
                 "ffmpeg", "-y",
                 "-i", input_clip_path,
