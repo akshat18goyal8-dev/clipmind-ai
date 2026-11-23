@@ -9,27 +9,27 @@ echo.
 
 cd /d "%~dp0"
 
-echo [1/3] Checking Python virtual environment...
+echo [1/3] Checking environment...
 if not exist "backend\venv\Scripts\python.exe" (
-    echo [INFO] Initializing Python virtual environment...
-    python -m venv backend\venv
-    call backend\venv\Scripts\pip install -r backend\requirements.txt
+    echo [INFO] Running initial setup...
+    call install.bat
 )
 
-echo [2/3] Checking production frontend build...
+echo [2/3] Preparing Studio Interface...
 if not exist "frontend\dist\index.html" (
-    echo [INFO] Building frontend production bundle...
-    cd frontend
-    call npm install
-    call npm run build
-    cd ..
+    if exist "frontend\package.json" (
+        cd frontend
+        call npm install
+        call npm run build
+        cd ..
+    )
 )
 
-echo [3/3] Starting CLIPMIND AI Engine on http://localhost:8000 ...
-start "" "http://localhost:8000"
+echo [3/3] Starting CLIPMIND AI Studio on http://localhost:8000 ...
+start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8000"
 
 cd backend
 set PYTHONPATH=.
-.\venv\Scripts\python main.py
+.\venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000
 
 pause
