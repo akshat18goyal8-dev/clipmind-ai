@@ -149,10 +149,10 @@ class FFmpegUtils:
 
         # Target is 9:16 (1080x1920)
         if background_blur:
-            # Dual-layer: blurred scaled background + centered cropped foreground
+            # Dual-layer: blurred scaled background + centered foreground
             filter_complex = (
                 "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg];"
-                "[0:v]scale=1080:-1[fg];"
+                "[0:v]scale=1080:-2[fg];"
                 "[bg][fg]overlay=(W-w)/2:(H-h)/2[outv]"
             )
             cmd = [
@@ -162,6 +162,7 @@ class FFmpegUtils:
                 "-map", "[outv]",
                 "-map", "0:a?",
                 "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
                 "-preset", "veryfast",
                 "-crf", "22",
                 "-c:a", "aac",
@@ -170,13 +171,13 @@ class FFmpegUtils:
             ]
         else:
             # Direct crop around subject center
-            # crop=ih*9/16:ih:x_offset:0
             filter_complex = f"crop=ih*9/16:ih:'min(max(0, iw*{face_x_center_ratio} - (ih*9/32)), iw - (ih*9/16))':0,scale=1080:1920"
             cmd = [
                 "ffmpeg", "-y",
                 "-i", input_clip_path,
                 "-vf", filter_complex,
                 "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
                 "-preset", "veryfast",
                 "-crf", "22",
                 "-c:a", "aac",
