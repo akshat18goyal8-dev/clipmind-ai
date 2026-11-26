@@ -19,6 +19,9 @@ call backend\venv\Scripts\python desktop_app.py
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
+    echo [WARNING] Desktop window closed or encountered an issue.
     echo [INFO] Launching via browser mode fallback...
     call Run_CLIPMIND_AI.bat
 )
+
+pause

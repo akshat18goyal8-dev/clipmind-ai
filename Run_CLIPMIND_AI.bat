@@ -25,8 +25,18 @@ if not exist "frontend\dist\index.html" (
     )
 )
 
-echo [3/3] Starting CLIPMIND AI Studio on http://localhost:8000 ...
-start "" /b cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8000"
+echo [3/3] Checking CLIPMIND AI Studio on http://localhost:8000 ...
+powershell -Command "try { $r = Invoke-WebRequest -Uri 'http://localhost:8000/health' -UseBasicParsing -TimeoutSec 1; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo [INFO] CLIPMIND AI engine is already active and healthy!
+    start http://localhost:8000
+    echo Studio is opened in your browser at http://localhost:8000
+    echo Keep this window open or press any key to close launcher.
+    pause
+    exit /b 0
+)
+
+start "" /b cmd /c "timeout /t 3 /nobreak >nul & start http://localhost:8000"
 
 cd backend
 set PYTHONPATH=.
